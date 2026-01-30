@@ -8,7 +8,8 @@ import {
   FaEnvelope,
   FaLock,
   FaEye,
-  FaEyeSlash
+  FaEyeSlash,
+  FaUserPlus,
 } from "react-icons/fa";
 
 export default function Register() {
@@ -22,10 +23,18 @@ export default function Register() {
     name: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
 
   const [errors, setErrors] = useState({});
+
+  // -------- Password Strength --------
+  const strength =
+    form.password.length >= 10
+      ? "strong"
+      : form.password.length >= 6
+      ? "medium"
+      : "weak";
 
   // ---------------- VALIDATION ----------------
   const validate = () => {
@@ -51,19 +60,23 @@ export default function Register() {
   // ---------------- REGISTER ----------------
   const submit = async (e) => {
     e.preventDefault();
-
     if (!validate()) return;
 
     try {
       setLoading(true);
 
-      await api.post("/auth/register", {
-        name: form.name,
-        email: form.email,
-        password: form.password
-      }, {withCredentials: true});
+      await api.post(
+        "/auth/register",
+        {
+          name: form.name,
+          email: form.email,
+          password: form.password,
+        },
+        { withCredentials: true }
+      );
 
       toast.success("Registered Successfully 🎉");
+
       setTimeout(() => navigate("/"), 1000);
     } catch (err) {
       toast.error(err?.response?.data?.message || "Registration failed");
@@ -72,109 +85,132 @@ export default function Register() {
     }
   };
 
-  // ---------------- UI ----------------
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-500 via-blue-600 to-purple-600 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-500 via-blue-600 to-purple-700 p-4">
 
-      <div className="bg-white/90 backdrop-blur-xl shadow-2xl rounded-3xl w-full max-w-md p-8 space-y-6">
+      {/* CARD */}
+      <div className="bg-white/80 backdrop-blur-2xl shadow-2xl rounded-3xl w-full max-w-md p-8 space-y-6 transition hover:scale-[1.01]">
 
         {/* HEADER */}
-        <div className="text-center">
-          <h2 className="text-3xl font-bold">Create Account ✨</h2>
+        <div className="text-center space-y-2">
+          <div className="flex justify-center">
+            <div className="bg-green-600 text-white p-3 rounded-2xl shadow-lg">
+              <FaUserPlus size={20} />
+            </div>
+          </div>
+
+          <h2 className="text-3xl font-bold">Create Account</h2>
           <p className="text-gray-500 text-sm">
-            Register to access HR dashboard
+            Register to access HR Dashboard
           </p>
         </div>
 
         {/* FORM */}
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className="space-y-5">
 
           {/* NAME */}
           <div>
-            <div className="relative">
-              <FaUser className="absolute top-4 left-3 text-gray-400" />
+            <div className="relative group">
+              <FaUser className="absolute top-4 left-3 text-gray-400 group-focus-within:text-green-600" />
+
               <input
                 type="text"
                 placeholder="Full Name"
-                className="w-full border pl-10 p-3 rounded-xl focus:ring-2 focus:ring-green-500 outline-none"
                 value={form.name}
                 onChange={(e) =>
                   setForm({ ...form, name: e.target.value })
                 }
+                className="w-full border pl-10 p-3 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition"
               />
             </div>
             {errors.name && (
-              <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+              <p className="text-red-500 text-xs mt-1">{errors.name}</p>
             )}
           </div>
 
           {/* EMAIL */}
           <div>
-            <div className="relative">
-              <FaEnvelope className="absolute top-4 left-3 text-gray-400" />
+            <div className="relative group">
+              <FaEnvelope className="absolute top-4 left-3 text-gray-400 group-focus-within:text-green-600" />
+
               <input
                 type="email"
                 placeholder="Email"
-                className="w-full border pl-10 p-3 rounded-xl focus:ring-2 focus:ring-green-500 outline-none"
                 value={form.email}
                 onChange={(e) =>
                   setForm({ ...form, email: e.target.value })
                 }
+                className="w-full border pl-10 p-3 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition"
               />
             </div>
             {errors.email && (
-              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+              <p className="text-red-500 text-xs mt-1">{errors.email}</p>
             )}
           </div>
 
           {/* PASSWORD */}
           <div>
-            <div className="relative">
-              <FaLock className="absolute top-4 left-3 text-gray-400" />
+            <div className="relative group">
+              <FaLock className="absolute top-4 left-3 text-gray-400 group-focus-within:text-green-600" />
 
               <input
                 type={showPass ? "text" : "password"}
                 placeholder="Password"
-                className="w-full border pl-10 pr-10 p-3 rounded-xl focus:ring-2 focus:ring-green-500 outline-none"
                 value={form.password}
                 onChange={(e) =>
                   setForm({ ...form, password: e.target.value })
                 }
+                className="w-full border pl-10 pr-10 p-3 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition"
               />
 
               <span
-                className="absolute top-4 right-3 cursor-pointer"
+                className="absolute top-4 right-3 cursor-pointer text-gray-500"
                 onClick={() => setShowPass(!showPass)}
               >
                 {showPass ? <FaEyeSlash /> : <FaEye />}
               </span>
             </div>
 
+            {/* Strength Bar */}
+            {form.password && (
+              <div className="h-1 mt-2 rounded bg-gray-200">
+                <div
+                  className={`h-1 rounded transition-all ${
+                    strength === "weak"
+                      ? "w-1/3 bg-red-500"
+                      : strength === "medium"
+                      ? "w-2/3 bg-yellow-500"
+                      : "w-full bg-green-600"
+                  }`}
+                />
+              </div>
+            )}
+
             {errors.password && (
-              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+              <p className="text-red-500 text-xs mt-1">{errors.password}</p>
             )}
           </div>
 
           {/* CONFIRM PASSWORD */}
           <div>
-            <div className="relative">
-              <FaLock className="absolute top-4 left-3 text-gray-400" />
+            <div className="relative group">
+              <FaLock className="absolute top-4 left-3 text-gray-400 group-focus-within:text-green-600" />
 
               <input
                 type={showConfirm ? "text" : "password"}
                 placeholder="Confirm Password"
-                className="w-full border pl-10 pr-10 p-3 rounded-xl focus:ring-2 focus:ring-green-500 outline-none"
                 value={form.confirmPassword}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    confirmPassword: e.target.value
+                    confirmPassword: e.target.value,
                   })
                 }
+                className="w-full border pl-10 pr-10 p-3 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition"
               />
 
               <span
-                className="absolute top-4 right-3 cursor-pointer"
+                className="absolute top-4 right-3 cursor-pointer text-gray-500"
                 onClick={() => setShowConfirm(!showConfirm)}
               >
                 {showConfirm ? <FaEyeSlash /> : <FaEye />}
@@ -182,7 +218,7 @@ export default function Register() {
             </div>
 
             {errors.confirmPassword && (
-              <p className="text-red-500 text-sm mt-1">
+              <p className="text-red-500 text-xs mt-1">
                 {errors.confirmPassword}
               </p>
             )}
@@ -191,14 +227,18 @@ export default function Register() {
           {/* BUTTON */}
           <button
             disabled={loading}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition"
+            className="w-full bg-green-600 hover:bg-green-700 active:scale-95 text-white py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2"
           >
+            {loading && (
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            )}
+
             {loading ? "Creating..." : "Register"}
           </button>
         </form>
 
-        {/* LOGIN LINK */}
-        <p className="text-center text-sm">
+        {/* FOOTER */}
+        <p className="text-center text-sm text-gray-600">
           Already have account?{" "}
           <Link
             to="/"
