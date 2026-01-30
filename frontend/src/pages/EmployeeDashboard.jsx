@@ -17,6 +17,8 @@ export default function EmployeeDashboard() {
 
   const [status, setStatus] = useState("Present");
   const [loading, setLoading] = useState(false);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+
   const [showLeaveForm, setShowLeaveForm] = useState(false);
   const [sidebar, setSidebar] = useState(false);
 
@@ -36,13 +38,21 @@ export default function EmployeeDashboard() {
   }, []);
 
   const fetchLeaves = async () => {
-    const res = await api.get("/leaves/my");
-    setLeaves(res.data);
+    try {
+      const res = await api.get("/leaves/my");
+      setLeaves(res.data || []);
+    } catch {
+      toast.error("Failed to load leaves");
+    }
   };
 
   const fetchAttendance = async () => {
-    const res = await api.get("/attendance/my");
-    setAttendance(res.data);
+    try {
+      const res = await api.get("/attendance/my");
+      setAttendance(res.data || []);
+    } catch {
+      toast.error("Failed to load attendance");
+    }
   };
 
   /* ================= CALC ================= */
@@ -60,25 +70,47 @@ export default function EmployeeDashboard() {
       : 0;
 
   /* ================= ACTIONS ================= */
+
   const markAttendance = async () => {
-    await api.post("/attendance", { status });
-    toast.success("Attendance Marked ✅");
-    fetchAttendance();
+    try {
+      setAttendanceLoading(true);
+      await api.post("/attendance", { status });
+
+      toast.success("Attendance Marked ✅");
+      fetchAttendance();
+    } catch {
+      toast.error("Failed ❌");
+    } finally {
+      setAttendanceLoading(false);
+    }
   };
 
   const submitLeave = async () => {
     if (!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason)
       return toast.error("Fill all details");
 
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    await api.post("/leaves", leaveForm);
+      await api.post("/leaves", leaveForm);
 
-    toast.success("Leave Applied 🎉");
-    setShowLeaveForm(false);
-    setLoading(false);
+      toast.success("Leave Applied 🎉");
 
-    fetchLeaves();
+      setShowLeaveForm(false);
+
+      setLeaveForm({
+        type: "Casual",
+        startDate: "",
+        endDate: "",
+        reason: "",
+      });
+
+      fetchLeaves();
+    } catch {
+      toast.error("Failed ❌");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = async () => {
@@ -92,13 +124,16 @@ export default function EmployeeDashboard() {
 
       {/* ================= SIDEBAR ================= */}
       <aside
-        className={`fixed md:static z-40 top-0 left-0 h-100vh w-64
+        className={`
+        fixed md:relative z-40 w-64 h-screen
         bg-gradient-to-b from-indigo-700 to-indigo-900 text-white p-6
         transform ${sidebar ? "translate-x-0" : "-translate-x-full"}
-        md:translate-x-0 transition duration-300`}
+        md:translate-x-0 transition duration-300
+      `}
       >
         <div className="flex justify-between items-center mb-10">
           <h2 className="text-xl font-bold">HR Panel</h2>
+
           <FaTimes
             className="md:hidden cursor-pointer"
             onClick={() => setSidebar(false)}
@@ -116,7 +151,7 @@ export default function EmployeeDashboard() {
 
         <button
           onClick={logout}
-          className="absolute top-60 left-6 right-6 bg-red-500 hover:bg-red-600 py-2 rounded-xl flex items-center justify-center gap-2"
+          className="absolute bottom-6 left-6 right-6 bg-red-500 hover:bg-red-600 py-2 rounded-xl flex items-center justify-center gap-2"
         >
           <FaSignOutAlt /> Logout
         </button>
@@ -126,25 +161,26 @@ export default function EmployeeDashboard() {
       <div className="flex-1 p-4 md:p-8 space-y-8 w-full">
 
         {/* HEADER */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <FaBars
             className="md:hidden text-xl cursor-pointer"
             onClick={() => setSidebar(true)}
           />
 
-          <h1 className="text-2xl md:text-3xl font-bold">
+          <h1 className="text-xl md:text-3xl font-bold">
             Employee Dashboard 👋
           </h1>
         </div>
 
         {/* ================= STATS ================= */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <StatCard title="Present Days" value={presentDays} color="indigo" />
-          <StatCard title="Total Leaves" value={leaves.length} color="green" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <StatCard title="Present Days" value={presentDays} />
+          <StatCard title="Total Leaves" value={leaves.length} />
         </div>
 
         {/* ================= ATTENDANCE ================= */}
-        <div className="glass-card space-y-4">
+        <div className="bg-white/80 backdrop-blur-xl p-5 rounded-2xl shadow space-y-4">
+
           <h3 className="font-semibold text-lg">Mark Attendance</h3>
 
           <div className="flex flex-col sm:flex-row gap-3">
@@ -158,10 +194,11 @@ export default function EmployeeDashboard() {
             </select>
 
             <button
+              disabled={attendanceLoading}
               onClick={markAttendance}
-              className="btn-primary"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg disabled:opacity-50"
             >
-              Submit
+              {attendanceLoading ? "Submitting..." : "Submit"}
             </button>
           </div>
         </div>
@@ -169,22 +206,25 @@ export default function EmployeeDashboard() {
         {/* APPLY BUTTON */}
         <button
           onClick={() => setShowLeaveForm(true)}
-          className="btn-success"
+          className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-xl flex items-center gap-2 w-fit"
         >
           <FaPaperPlane /> Apply Leave
         </button>
 
         {/* ================= LEAVES ================= */}
-        <div className="glass-card">
-          <h3 className="font-semibold mb-4 text-lg">My Leaves</h3>
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow p-5 space-y-3">
 
-          <div className="space-y-3">
-            {leaves.map((l) => (
+          <h3 className="font-semibold text-lg">My Leaves</h3>
+
+          {leaves.length === 0 ? (
+            <p className="text-gray-500 text-sm">No leaves yet</p>
+          ) : (
+            leaves.map((l) => (
               <div
                 key={l._id}
                 className="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm hover:shadow-md transition"
               >
-                <span>
+                <span className="text-sm">
                   {l.type} ({l.totalDays} days)
                 </span>
 
@@ -201,14 +241,15 @@ export default function EmployeeDashboard() {
                   {l.status}
                 </span>
               </div>
-            ))}
-          </div>
+            ))
+          )}
         </div>
       </div>
 
       {/* ================= MODAL ================= */}
       {showLeaveForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+
           <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-6 space-y-4">
 
             <h3 className="font-bold text-lg">Apply Leave</h3>
@@ -216,7 +257,7 @@ export default function EmployeeDashboard() {
             <input
               type="date"
               min={today}
-              className="input"
+              className="border p-2 rounded-lg w-full"
               value={leaveForm.startDate}
               onChange={(e) =>
                 setLeaveForm({ ...leaveForm, startDate: e.target.value })
@@ -226,7 +267,7 @@ export default function EmployeeDashboard() {
             <input
               type="date"
               min={leaveForm.startDate || today}
-              className="input"
+              className="border p-2 rounded-lg w-full"
               value={leaveForm.endDate}
               onChange={(e) =>
                 setLeaveForm({ ...leaveForm, endDate: e.target.value })
@@ -241,7 +282,7 @@ export default function EmployeeDashboard() {
 
             <textarea
               placeholder="Reason"
-              className="input"
+              className="border p-2 rounded-lg w-full"
               value={leaveForm.reason}
               onChange={(e) =>
                 setLeaveForm({ ...leaveForm, reason: e.target.value })
@@ -251,7 +292,7 @@ export default function EmployeeDashboard() {
             <button
               disabled={loading}
               onClick={submitLeave}
-              className="btn-primary w-full"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white w-full py-2 rounded-lg disabled:opacity-50"
             >
               {loading ? "Submitting..." : "Submit"}
             </button>
@@ -269,12 +310,12 @@ export default function EmployeeDashboard() {
   );
 }
 
-/* ================= REUSABLE ================= */
+/* ================= CARD ================= */
 function StatCard({ title, value }) {
   return (
-    <div className="glass-card text-center">
+    <div className="bg-white/80 backdrop-blur-xl p-6 rounded-2xl shadow text-center">
       <p className="text-gray-500 text-sm">{title}</p>
-      <h2 className="text-3xl font-bold">{value}</h2>
+      <h2 className="text-3xl font-bold text-indigo-600">{value}</h2>
     </div>
   );
 }
