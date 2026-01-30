@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import "dotenv/config"
 
 /* ================= REGISTER ================= */
 export const register = async (req, res) => {
@@ -48,9 +49,8 @@ export const login = async (req, res) => {
     /* ✅ COOKIE FIX (LOCAL + RENDER BOTH) */
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite:
-        process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.secure,
+      sameSite: process.env.sameSite,
       maxAge: 24 * 60 * 60 * 1000,
     });
 
@@ -91,9 +91,8 @@ export const getMe = async (req, res) => {
 export const logout = (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite:
-      process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: process.env.secure,
+    sameSite: process.env.sameSite,
   });
 
   res.json({ message: "Logged out" });
