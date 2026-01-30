@@ -2,7 +2,7 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-// REGISTER USER (Employee)
+/* ================= REGISTER ================= */
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -13,23 +13,20 @@ export const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({
+    await User.create({
       name,
       email,
       password: hashedPassword,
-      role: "employee"
+      role: "employee",
     });
 
-    res.status(201).json({
-      message: "User registered successfully",
-      user
-    });
+    res.status(201).json({ message: "Registered successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// LOGIN USER
+/* ================= LOGIN ================= */
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -38,8 +35,8 @@ export const login = async (req, res) => {
     if (!user)
       return res.status(401).json({ message: "Invalid credentials" });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
+    const match = await bcrypt.compare(password, user.password);
+    if (!match)
       return res.status(401).json({ message: "Invalid credentials" });
 
     const token = jwt.sign(
@@ -48,17 +45,56 @@ export const login = async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    /* ✅ COOKIE FIX (LOCAL + RENDER BOTH) */
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite:
+        process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
     res.json({
-      token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        leaveBalance: user.leaveBalance
-      }
+      },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+};
+
+/* ================= GET ME ================= */
+export const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ================= LOGOUT ================= */
+export const logout = (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite:
+      process.env.NODE_ENV === "production" ? "none" : "lax",
+  });
+
+  res.json({ message: "Logged out" });
 };

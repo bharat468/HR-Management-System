@@ -6,8 +6,7 @@ import {
   FaUserCheck,
   FaCalendarAlt,
   FaPaperPlane,
-  FaSignOutAlt,
-  FaTimes
+  FaSignOutAlt
 } from "react-icons/fa";
 
 export default function EmployeeDashboard() {
@@ -18,10 +17,6 @@ export default function EmployeeDashboard() {
   const [loading, setLoading] = useState(false);
   const [showLeaveForm, setShowLeaveForm] = useState(false);
 
-  const [leaveBalance, setLeaveBalance] = useState(
-    Number(localStorage.getItem("leaveBalance")) || 20
-  );
-
   const [leaveForm, setLeaveForm] = useState({
     type: "Casual",
     startDate: "",
@@ -31,23 +26,33 @@ export default function EmployeeDashboard() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  // ---------------- FETCH ----------------
+  /* ================= FETCH ================= */
   useEffect(() => {
     fetchLeaves();
     fetchAttendance();
   }, []);
 
   const fetchLeaves = async () => {
-    const res = await api.get("/leaves/my");
-    setLeaves(res.data);
+    try {
+      const res = await api.get("/leaves/my");
+      setLeaves(res.data);
+    } catch (err) {
+      console.log(err)
+      toast.error("Failed to load leaves");
+    }
   };
 
   const fetchAttendance = async () => {
-    const res = await api.get("/attendance/my");
-    setAttendance(res.data);
+    try {
+      const res = await api.get("/attendance/my");
+      setAttendance(res.data);
+    } catch (err) {
+      console.log(err)
+      toast.error("Failed to load attendance");
+    }
   };
 
-  // ---------------- DAYS CALC ----------------
+  /* ================= TOTAL DAYS ================= */
   const totalDays =
     leaveForm.startDate && leaveForm.endDate
       ? Math.floor(
@@ -57,9 +62,7 @@ export default function EmployeeDashboard() {
         ) + 1
       : 0;
 
-  const remainingBalance = leaveBalance - totalDays;
-
-  // ---------------- ATTENDANCE ----------------
+  /* ================= ATTENDANCE ================= */
   const markAttendance = async () => {
     try {
       await api.post("/attendance", { status });
@@ -70,17 +73,10 @@ export default function EmployeeDashboard() {
     }
   };
 
-  // ---------------- LEAVE VALIDATION ----------------
-  const isInvalid =
-    !leaveForm.startDate ||
-    !leaveForm.endDate ||
-    !leaveForm.reason ||
-    totalDays <= 0 ||
-    remainingBalance < 0;
-
-  // ---------------- LEAVE SUBMIT ----------------
+  /* ================= LEAVE APPLY ================= */
   const submitLeave = async () => {
-    if (isInvalid) return toast.error("Please fill valid details");
+    if (!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason)
+      return toast.error("Fill all details");
 
     try {
       setLoading(true);
@@ -89,15 +85,14 @@ export default function EmployeeDashboard() {
 
       toast.success("Leave Applied Successfully 🎉");
 
-      setShowLeaveForm(false);
-      setLeaveBalance(remainingBalance);
-
       setLeaveForm({
         type: "Casual",
         startDate: "",
         endDate: "",
         reason: ""
       });
+
+      setShowLeaveForm(false);
 
       fetchLeaves();
     } catch (err) {
@@ -107,9 +102,9 @@ export default function EmployeeDashboard() {
     }
   };
 
-  // ---------------- LOGOUT ----------------
-  const logout = () => {
-    localStorage.clear();
+  /* ================= LOGOUT ================= */
+  const logout = async () => {
+    await api.post("/auth/logout");
     window.location.href = "/";
   };
 
@@ -117,7 +112,7 @@ export default function EmployeeDashboard() {
     (a) => a.status === "Present"
   ).length;
 
-  // ---------------- UI ----------------
+  /* ================= UI ================= */
   return (
     <div className="flex min-h-screen bg-gray-100">
 
@@ -138,32 +133,32 @@ export default function EmployeeDashboard() {
 
         <button
           onClick={logout}
-          className="bg-red-500 hover:bg-red-600 py-2 rounded-lg"
+          className="bg-red-500 hover:bg-red-600 py-2 rounded-lg flex items-center justify-center gap-2"
         >
-          Logout
+          <FaSignOutAlt /> Logout
         </button>
       </aside>
 
       {/* MAIN */}
-      <div className="flex-1 p-4 md:p-8 space-y-6">
+      <div className="flex-1 p-6 space-y-6">
 
         <h1 className="text-2xl font-bold">Employee Dashboard 👋</h1>
 
         {/* STATS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <StatCard title="Present Days" value={presentDays} color="green" />
-          <StatCard title="Total Leaves" value={leaves.length} color="blue" />
+        <div className="grid grid-cols-2 gap-4">
+          <StatCard title="Present Days" value={presentDays} />
+          <StatCard title="Total Leaves" value={leaves.length} />
         </div>
 
         {/* ATTENDANCE */}
-        <div className="bg-white p-6 rounded-2xl shadow space-y-4">
+        <div className="bg-white p-6 rounded-xl shadow space-y-4">
           <h3 className="font-semibold">Mark Attendance</h3>
 
-          <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex gap-3">
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="border p-3 rounded-lg w-full md:w-40"
+              className="border p-2 rounded-lg"
             >
               <option>Present</option>
               <option>Absent</option>
@@ -171,7 +166,7 @@ export default function EmployeeDashboard() {
 
             <button
               onClick={markAttendance}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg"
+              className="bg-indigo-600 text-white px-5 py-2 rounded-lg"
             >
               Submit
             </button>
@@ -181,13 +176,13 @@ export default function EmployeeDashboard() {
         {/* APPLY BUTTON */}
         <button
           onClick={() => setShowLeaveForm(true)}
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl"
+          className="bg-green-600 text-white px-6 py-3 rounded-lg flex items-center gap-2"
         >
-          Apply Leave
+          <FaPaperPlane /> Apply Leave
         </button>
 
         {/* LEAVE LIST */}
-        <div className="bg-white p-6 rounded-2xl shadow space-y-2">
+        <div className="bg-white p-6 rounded-xl shadow space-y-2">
           <h3 className="font-semibold">My Leaves</h3>
 
           {leaves.map((l) => (
@@ -195,49 +190,36 @@ export default function EmployeeDashboard() {
               key={l._id}
               className="flex justify-between border p-3 rounded-lg text-sm"
             >
-              <span>{l.type} ({l.totalDays} days)</span>
+              <span>
+                {l.type} ({l.totalDays} days)
+              </span>
               <span>{l.status}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* LEAVE MODAL */}
+      {/* MODAL */}
       {showLeaveForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md p-6 rounded-2xl space-y-4">
+          <div className="bg-white w-full max-w-md p-6 rounded-xl space-y-3">
 
-            <h3 className="font-bold text-lg">Apply Leave</h3>
+            <h3 className="font-bold">Apply Leave</h3>
 
-            <label className="text-sm">Type</label>
-            <select
-              className="border p-3 rounded-lg w-full"
-              value={leaveForm.type}
-              onChange={(e) =>
-                setLeaveForm({ ...leaveForm, type: e.target.value })
-              }
-            >
-              <option>Casual</option>
-              <option>Sick</option>
-              <option>Paid</option>
-            </select>
-
-            <label className="text-sm">From Date </label>
             <input
               type="date"
               min={today}
-              className="border p-3 rounded-lg w-full"
+              className="border p-2 w-full rounded"
               value={leaveForm.startDate}
               onChange={(e) =>
                 setLeaveForm({ ...leaveForm, startDate: e.target.value })
               }
             />
 
-            <label className="text-sm">To Date </label>
             <input
               type="date"
               min={leaveForm.startDate || today}
-              className="border p-3 rounded-lg w-full"
+              className="border p-2 w-full rounded"
               value={leaveForm.endDate}
               onChange={(e) =>
                 setLeaveForm({ ...leaveForm, endDate: e.target.value })
@@ -245,14 +227,12 @@ export default function EmployeeDashboard() {
             />
 
             {totalDays > 0 && (
-              <div className="text-sm bg-gray-100 p-3 rounded-lg">
-                Days: <b>{totalDays}</b> 
-              </div>
+              <p className="text-sm">Days: {totalDays}</p>
             )}
 
             <textarea
               placeholder="Reason"
-              className="border p-3 rounded-lg w-full"
+              className="border p-2 w-full rounded"
               value={leaveForm.reason}
               onChange={(e) =>
                 setLeaveForm({ ...leaveForm, reason: e.target.value })
@@ -260,16 +240,16 @@ export default function EmployeeDashboard() {
             />
 
             <button
-              disabled={isInvalid || loading}
+              disabled={loading}
               onClick={submitLeave}
-              className="w-full bg-indigo-600 text-white py-3 rounded-lg disabled:opacity-50"
+              className="bg-indigo-600 text-white w-full py-2 rounded"
             >
-              {loading ? "Submitting..." : "Submit Leave"}
+              {loading ? "Submitting..." : "Submit"}
             </button>
 
             <button
               onClick={() => setShowLeaveForm(false)}
-              className="w-full text-gray-500 text-sm"
+              className="text-sm text-gray-500 w-full"
             >
               Cancel
             </button>
@@ -280,18 +260,12 @@ export default function EmployeeDashboard() {
   );
 }
 
-// ---------- STAT CARD ----------
-function StatCard({ title, value, color }) {
-  const colors = {
-    green: "text-green-600",
-    blue: "text-blue-600",
-    purple: "text-purple-600"
-  };
-
+/* ================= CARD ================= */
+function StatCard({ title, value }) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow text-center">
-      <p className="text-gray-500 text-sm">{title}</p>
-      <h3 className={`text-3xl font-bold ${colors[color]}`}>{value}</h3>
+    <div className="bg-white p-6 rounded-xl shadow text-center">
+      <p className="text-sm text-gray-500">{title}</p>
+      <h2 className="text-3xl font-bold">{value}</h2>
     </div>
   );
 }

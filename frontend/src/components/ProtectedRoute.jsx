@@ -1,12 +1,15 @@
 import { Navigate } from "react-router-dom";
+import { useContext } from "react";
+import { UserContext } from "../context/UserContext";
 
 export default function ProtectedRoute({ children, role }) {
-  const token = localStorage.getItem("token");
-  const userRole = localStorage.getItem("role");
+  const { user, loading } = useContext(UserContext);
 
-  if (!token) return <Navigate to="/" />;
+  if (loading) return <div>Loading...</div>;
 
-  if (role && role !== userRole) return <Navigate to="/" />;
+  if (!user) return <Navigate to="/" />;
+
+  if (role && role !== user.role) return <Navigate to="/" />;
 
   return children;
 }

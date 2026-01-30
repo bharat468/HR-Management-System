@@ -61,10 +61,9 @@ export default function Register() {
         name: form.name,
         email: form.email,
         password: form.password
-      });
+      }, {withCredentials: true});
 
       toast.success("Registered Successfully 🎉");
-
       setTimeout(() => navigate("/"), 1000);
     } catch (err) {
       toast.error(err?.response?.data?.message || "Registration failed");

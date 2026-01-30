@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
 import { toast } from "react-toastify";
+import { UserContext } from "../context/UserContext";
 
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { setUser } = useContext(UserContext);
 
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -44,18 +46,17 @@ export default function Login() {
 
     try {
       setLoading(true);
-
+      
       const res = await api.post("/auth/login", {
         email: form.email,
         password: form.password
-      });
+      }, {withCredentials: true});
 
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("role", res.data.user.role);
-
+      const userData = res.data.user;
+      setUser(userData);
+      
       toast.success("Login Successful 🎉");
-
-      navigate(res.data.user.role === "admin" ? "/admin" : "/employee");
+      navigate(userData.role === "admin" ? "/admin" : "/employee");
     } catch (err) {
       toast.error(err?.response?.data?.message || "Invalid credentials");
     } finally {
